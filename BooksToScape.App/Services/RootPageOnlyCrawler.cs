@@ -12,6 +12,13 @@ namespace BooksToScape.App.Services;
 /// </summary>
 public class RootPageOnlyCrawler : IBooksToScrapeCrawler
 {
+    private readonly HttpClient _client;
+
+    public RootPageOnlyCrawler(HttpClient client)
+    {
+        _client = client;
+    }
+
     public async Task Crawl(string directoryToDownload)
     {
         if (!Directory.Exists(directoryToDownload))
@@ -20,9 +27,7 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
             Directory.CreateDirectory(directoryToDownload);
         }
 
-        var client = new HttpClient();
-
-        var responseString = await client.GetStringAsync(ApplicationConstants.RootUrl);
+        var responseString = await _client.GetStringAsync(ApplicationConstants.RootUrl);
 
         var htmlDocument = new HtmlDocument();
         htmlDocument.LoadHtml(responseString);
@@ -53,7 +58,7 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
         {
             if (!url.IsAbsoluteUri)
             {
-                await DownloadResourcesLocallyAsync(client, new Uri(new Uri(ApplicationConstants.RootUrl), url), directoryToDownload);
+                await DownloadResourcesLocallyAsync(new Uri(new Uri(ApplicationConstants.RootUrl), url), directoryToDownload);
             }
         }
 
@@ -61,9 +66,9 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
         htmlDocument.Save(writer);
     }
 
-    private async Task DownloadResourcesLocallyAsync(HttpClient client, Uri inputUri, string directoryToDownload)
+    private async Task DownloadResourcesLocallyAsync(Uri inputUri, string directoryToDownload)
     {
-        var response = await client.GetAsync(inputUri);
+        var response = await _client.GetAsync(inputUri);
 
         if (response.IsSuccessStatusCode)
         {
@@ -83,7 +88,6 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
                 foreach (var url in urlsInsideCss)
                 {
                     await DownloadResourcesLocallyAsync(
-                        client,
                         new Uri(inputUri, new Uri(url, UriKind.RelativeOrAbsolute)),
                         directoryToDownload);
                 }

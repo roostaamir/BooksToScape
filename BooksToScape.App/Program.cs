@@ -1,18 +1,22 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using BooksToScape.App.Common;
 using BooksToScape.App.Services;
-using HtmlAgilityPack;
+using BooksToScape.App.Services.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-const string scrapingUrl = "https://books.toscrape.com/";
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddTransient<IBooksToScrapeCrawler, RootPageOnlyCrawler>();
+builder.Services.AddHttpClient(ApplicationConstants.DefaultHttpClientName);
 
-var client = new HttpClient();
-
-var responseString = await client.GetStringAsync(scrapingUrl);
-
-var htmlDocument = new HtmlDocument();
-htmlDocument.LoadHtml(responseString);
+using var host = builder.Build();
+using var scope = host.Services.CreateScope();
 
 Console.WriteLine("Enter a path to Crawl");
 var path = Console.ReadLine();
 
-await new RootPageOnlyCrawler().Crawl(path);
+var crawler = scope.ServiceProvider.GetRequiredService<IBooksToScrapeCrawler>();
+await crawler.Crawl(path);
+
+await host.StartAsync();

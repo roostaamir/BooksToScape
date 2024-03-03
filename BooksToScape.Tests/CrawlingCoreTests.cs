@@ -23,7 +23,9 @@ public class CrawlingCoreTests : PageTest
     [Test]
     public async Task TestCrawlingRootPage_ShouldNotHaveAnyConsoleErrors()
     {
-        var crawler = new RootPageOnlyCrawler();
+        var client = new HttpClient();
+
+        var crawler = new RootPageOnlyCrawler(client);
         await crawler.Crawl(_testDirectory);
 
         var consoleMessageList = new List<IConsoleMessage>();
