@@ -53,7 +53,7 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
         {
             if (!url.IsAbsoluteUri)
             {
-                await DownloadLocallyAsync(client, new Uri(new Uri(ApplicationConstants.RootUrl), url), directoryToDownload);
+                await DownloadResourcesLocallyAsync(client, new Uri(new Uri(ApplicationConstants.RootUrl), url), directoryToDownload);
             }
         }
 
@@ -61,36 +61,45 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
         htmlDocument.Save(writer);
     }
 
-    private async Task DownloadLocallyAsync(HttpClient client, Uri inputUri, string directoryToDownload)
+    private async Task DownloadResourcesLocallyAsync(HttpClient client, Uri inputUri, string directoryToDownload)
     {
         var response = await client.GetAsync(inputUri);
 
         if (response.IsSuccessStatusCode)
         {
             var localPath = Path.Combine(directoryToDownload, GetCleanLocalPath(inputUri));
-
-            localPath = localPath.Replace('/', '\\');
-
             Directory.CreateDirectory(Path.GetDirectoryName(localPath));
-
-            await using var fileStream = new FileStream(localPath, FileMode.Create);
-            await response.Content.CopyToAsync(fileStream);
 
             if (Path.GetExtension(localPath).Equals(".css", StringComparison.InvariantCulture))
             {
                 var cssText = await response.Content.ReadAsStringAsync();
-                var urlsInsideCss = Regex.Matches(cssText, """url\(['"]?(.*?)['"]?\)""")
+
+                var urlsInsideCss = Regex.Matches(
+                        cssText,
+                        """url\(['"]?(.*?)['"]?\)""")
                     .Select(g => g.Groups[1].Value)
                     .ToList();
 
                 foreach (var url in urlsInsideCss)
                 {
-                    await DownloadLocallyAsync(
+                    await DownloadResourcesLocallyAsync(
                         client,
                         new Uri(inputUri, new Uri(url, UriKind.RelativeOrAbsolute)),
                         directoryToDownload);
                 }
+
+                //Remove query parameters from urls
+                cssText = Regex.Replace(
+                    cssText,
+                    """(url\(['"]?.*?)%3F.*?(['"]?\))""",
+                    "$1$2");
+
+                await File.WriteAllTextAsync(localPath, cssText);
+                return;
             }
+
+            await using var fileStream = new FileStream(localPath, FileMode.Create);
+            await response.Content.CopyToAsync(fileStream);
         }
 
         //TODO do something with the exception
@@ -100,7 +109,8 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
     {
         var localPath = inputUri.LocalPath
             .TrimStart('/')
-            .TrimEnd('/');
+            .TrimEnd('/')
+            .Replace('/', '\\');
 
         var queryParameterStartIndex = localPath.LastIndexOf('?');
 
