@@ -405,6 +405,8 @@ FodyWeavers.xsd
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
 .idea/**/shelf
+.idea/**/vcs.xml
+.idea/**/indexLayout.xml
 
 # AWS User-specific
 .idea/**/aws.xml
@@ -470,4 +472,3 @@ fabric.properties
 
 # Editor-based Rest Client
 .idea/httpRequests
-
