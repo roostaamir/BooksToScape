@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BooksToScape.App", "BooksToScape.App\BooksToScape.App.csproj", "{7A4B5A37-D0BD-486A-9A62-36B6F7885950}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BooksToScape.Tests", "BooksToScape.Tests\BooksToScape.Tests.csproj", "{29756EF1-2246-4612-8E1E-F9AF8D2FC9DF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{7A4B5A37-D0BD-486A-9A62-36B6F7885950}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A4B5A37-D0BD-486A-9A62-36B6F7885950}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7A4B5A37-D0BD-486A-9A62-36B6F7885950}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29756EF1-2246-4612-8E1E-F9AF8D2FC9DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29756EF1-2246-4612-8E1E-F9AF8D2FC9DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29756EF1-2246-4612-8E1E-F9AF8D2FC9DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29756EF1-2246-4612-8E1E-F9AF8D2FC9DF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
