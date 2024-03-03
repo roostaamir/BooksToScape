@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using BooksToScape.App.Services;
 using HtmlAgilityPack;
 using StreamWriter = System.IO.StreamWriter;
 
@@ -27,3 +28,8 @@ headerElement.InnerHtml = "Other Title";
 
 await using var writer = new StreamWriter(Path.Combine(Environment.CurrentDirectory, "modified-doc.html"));
 htmlDocument.Save(writer);
+
+Console.WriteLine("Enter a path to Crawl");
+var path = Console.ReadLine();
+
+await new RootPageOnlyCrawler().Crawl(path);
