@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddTransient<IBooksToScrapeCrawler, RootPageOnlyCrawler>();
+builder.Services.AddTransient<IResourceCrawler, ResourceCrawler>();
 builder.Services.AddHttpClient(ApplicationConstants.DefaultHttpClientName);
 
 using var host = builder.Build();
@@ -17,6 +18,6 @@ Console.WriteLine("Enter a path to Crawl");
 var path = Console.ReadLine();
 
 var crawler = scope.ServiceProvider.GetRequiredService<IBooksToScrapeCrawler>();
-await crawler.Crawl(path);
+await crawler.CrawlAsync(ApplicationConstants.RootUrl, path);
 
 await host.StartAsync();

@@ -4,7 +4,7 @@ namespace BooksToScape.App.Services;
 
 public class GreedyBooksToScrapeCrawler : IBooksToScrapeCrawler
 {
-    public Task Crawl(string directoryToDownload)
+    public Task CrawlAsync(string url, string rootDownloadDirectory)
     {
         throw new NotImplementedException();
     }

@@ -2,5 +2,5 @@
 
 public interface IBooksToScrapeCrawler
 {
-    Task Crawl(string directoryToDownload);
+    Task CrawlAsync(string url, string rootDownloadDirectory);
 }

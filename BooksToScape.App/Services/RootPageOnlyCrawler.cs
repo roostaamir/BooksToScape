@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using BooksToScape.App.Common;
 using BooksToScape.App.Services.Interfaces;
+using BooksToScape.App.Utils;
 using HtmlAgilityPack;
 
 namespace BooksToScape.App.Services;
@@ -13,113 +14,40 @@ namespace BooksToScape.App.Services;
 public class RootPageOnlyCrawler : IBooksToScrapeCrawler
 {
     private readonly HttpClient _client;
+    private readonly IResourceCrawler _resourceCrawler;
 
-    public RootPageOnlyCrawler(HttpClient client)
+    public RootPageOnlyCrawler(HttpClient client, IResourceCrawler resourceCrawler)
     {
         _client = client;
+        _resourceCrawler = resourceCrawler;
     }
 
-    public async Task Crawl(string directoryToDownload)
+    public Task CrawlAsync(string url, string rootDownloadDirectory)
     {
-        if (!Directory.Exists(directoryToDownload))
+        if (!url.TrimEnd('/').Equals(ApplicationConstants.RootUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
         {
-            //TODO check directory is valid
-            Directory.CreateDirectory(directoryToDownload);
+            throw new ArgumentException("The crawler only supports crawling the root page of books.To.Scrape.com");
         }
 
+        if (!Directory.Exists(rootDownloadDirectory))
+        {
+            //TODO check directory is valid
+            Directory.CreateDirectory(rootDownloadDirectory);
+        }
+
+        return CrawlInternalAsync(rootDownloadDirectory);
+    }
+
+    private async Task CrawlInternalAsync(string rootDownloadDirectory)
+    {
         var responseString = await _client.GetStringAsync(ApplicationConstants.RootUrl);
 
         var htmlDocument = new HtmlDocument();
         htmlDocument.LoadHtml(responseString);
 
-        var headLinks = htmlDocument.DocumentNode
-            .Descendants("link")
-            .Where(el => el.Attributes["href"] is not null)
-            .Select(el => new Uri(el.Attributes["href"].Value, UriKind.RelativeOrAbsolute))
-            .ToList();
+        await _resourceCrawler.DownloadLocalResourcesAsync(htmlDocument.GetAllResourceUris(), rootDownloadDirectory);
 
-        var images = htmlDocument.DocumentNode
-            .Descendants("img")
-            .Where(el => el.Attributes["src"] is not null)
-            .Select(el => new Uri(el.Attributes["src"].Value, UriKind.RelativeOrAbsolute))
-            .ToList();
-
-        var scripts = htmlDocument.DocumentNode
-            .Descendants("script")
-            .Where(el => el.Attributes["src"] is not null)
-            .Select(el => new Uri(el.Attributes["src"].Value, UriKind.RelativeOrAbsolute))
-            .ToList();
-
-        var allUrlsToDownload = headLinks
-            .Concat(images)
-            .Concat(scripts);
-
-        foreach (var url in allUrlsToDownload)
-        {
-            if (!url.IsAbsoluteUri)
-            {
-                await DownloadResourcesLocallyAsync(new Uri(new Uri(ApplicationConstants.RootUrl), url), directoryToDownload);
-            }
-        }
-
-        await using var writer = new StreamWriter(Path.Combine(directoryToDownload, "index.html"));
+        await using var writer = new StreamWriter(Path.Combine(rootDownloadDirectory, "index.html"));
         htmlDocument.Save(writer);
-    }
-
-    private async Task DownloadResourcesLocallyAsync(Uri inputUri, string directoryToDownload)
-    {
-        var response = await _client.GetAsync(inputUri);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var localPath = Path.Combine(directoryToDownload, GetCleanLocalPath(inputUri));
-            Directory.CreateDirectory(Path.GetDirectoryName(localPath));
-
-            if (Path.GetExtension(localPath).Equals(".css", StringComparison.InvariantCulture))
-            {
-                var cssText = await response.Content.ReadAsStringAsync();
-
-                var urlsInsideCss = Regex.Matches(
-                        cssText,
-                        """url\(['"]?(.*?)['"]?\)""")
-                    .Select(g => g.Groups[1].Value)
-                    .ToList();
-
-                foreach (var url in urlsInsideCss)
-                {
-                    await DownloadResourcesLocallyAsync(
-                        new Uri(inputUri, new Uri(url, UriKind.RelativeOrAbsolute)),
-                        directoryToDownload);
-                }
-
-                //Remove query parameters from urls
-                cssText = Regex.Replace(
-                    cssText,
-                    """(url\(['"]?.*?)%3F.*?(['"]?\))""",
-                    "$1$2");
-
-                await File.WriteAllTextAsync(localPath, cssText);
-                return;
-            }
-
-            await using var fileStream = new FileStream(localPath, FileMode.Create);
-            await response.Content.CopyToAsync(fileStream);
-        }
-
-        //TODO do something with the exception
-    }
-
-    private static string GetCleanLocalPath(Uri inputUri)
-    {
-        var localPath = inputUri.LocalPath
-            .TrimStart('/')
-            .TrimEnd('/')
-            .Replace('/', '\\');
-
-        var queryParameterStartIndex = localPath.LastIndexOf('?');
-
-        return queryParameterStartIndex < 0
-            ? localPath
-            : localPath.Substring(0, queryParameterStartIndex);
     }
 }
