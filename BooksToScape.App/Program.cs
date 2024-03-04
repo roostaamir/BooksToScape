@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Diagnostics;
+using BooksToScape.App;
 using BooksToScape.App.Common;
 using BooksToScape.App.Services;
 using BooksToScape.App.Services.Interfaces;
@@ -12,6 +13,10 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddTransient<IBooksToScrapeCrawler, PerformantCrawler>();
 builder.Services.AddTransient<IResourceCrawler, PerformantResourceCrawler>();
 builder.Services.AddHttpClient(ApplicationConstants.DefaultHttpClientName);
+builder.Services.AddMediatR(config =>
+{
+    config.RegisterServicesFromAssembly(typeof(IAssemblyMarker).Assembly);
+});
 
 builder.Services.AddLogging(config =>
 {
@@ -28,9 +33,10 @@ var crawler = scope.ServiceProvider.GetRequiredService<IBooksToScrapeCrawler>();
 
 var stopwatch = Stopwatch.StartNew();
 
-await crawler.CrawlAsync(path);
+var result = await crawler.CrawlAsync(path);
 
 stopwatch.Stop();
-Console.WriteLine(stopwatch.ElapsedMilliseconds);
+
+Console.WriteLine($"\nScraping finished in {stopwatch.ElapsedMilliseconds} milliseconds with {result.Errors.Count} errors");
 
 await host.StartAsync();

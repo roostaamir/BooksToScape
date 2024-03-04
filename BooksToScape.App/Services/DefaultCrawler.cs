@@ -1,9 +1,12 @@
 ﻿using BooksToScape.App.Common;
 using BooksToScape.App.Errors;
+using BooksToScape.App.Messaging;
 using BooksToScape.App.Services.Interfaces;
 using BooksToScape.App.Utils;
 using FluentResults;
 using HtmlAgilityPack;
+using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace BooksToScape.App.Services;
 
@@ -16,13 +19,21 @@ public class DefaultCrawler : IBooksToScrapeCrawler
 
     private readonly HttpClient _client;
     private readonly IResourceCrawler _resourceCrawler;
+    private readonly IMediator _mediator;
+    private readonly ILogger<DefaultCrawler> _logger;
 
     private readonly List<Uri> _visitedUris;
 
-    public DefaultCrawler(HttpClient client, IResourceCrawler resourceCrawler)
+    public DefaultCrawler(
+        HttpClient client,
+        IResourceCrawler resourceCrawler,
+        IMediator mediator,
+        ILogger<DefaultCrawler> logger)
     {
         _client = client;
         _resourceCrawler = resourceCrawler;
+        _mediator = mediator;
+        _logger = logger;
 
         _visitedUris = new List<Uri>();
     }
@@ -47,20 +58,35 @@ public class DefaultCrawler : IBooksToScrapeCrawler
 
     private async Task<Result> CrawlInternalAsync(Uri uriToCrawl, string rootDownloadDirectory, int level)
     {
-        if (level++ > MaxDepth)
+        try
         {
-            return Result.Ok();
+            if (level++ > MaxDepth)
+            {
+                return Result.Ok();
+            }
+
+            var htmlDocument = await GetHtmlDocument(uriToCrawl);
+
+            var crawlLinksResult =
+                await CrawlUnvisitedRelativeUris(uriToCrawl, rootDownloadDirectory, level, htmlDocument);
+            var crawlResourcesResult =
+                await CrawlUnvisitedRelativeResources(uriToCrawl, rootDownloadDirectory, htmlDocument);
+
+            await htmlDocument.SaveToFile(
+                Path.Combine(rootDownloadDirectory, uriToCrawl.GetCleanedLocalDirectoryPath()));
+
+            return Result.Merge(crawlLinksResult, crawlResourcesResult);
         }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Exception occured while processing page url {PageUrl}",
+                uriToCrawl.ToString());
 
-        var htmlDocument = await GetHtmlDocument(uriToCrawl);
-
-        var crawlLinksResult = await CrawlUnvisitedRelativeUris(uriToCrawl, rootDownloadDirectory, level, htmlDocument);
-        var crawlResourcesResult = await CrawlUnvisitedRelativeResources(uriToCrawl, rootDownloadDirectory, htmlDocument);
-
-        await htmlDocument.SaveToFile(
-            Path.Combine(rootDownloadDirectory, uriToCrawl.GetCleanedLocalDirectoryPath()));
-
-        return Result.Merge(crawlLinksResult, crawlResourcesResult);
+            return Result.Fail(new Error($"Failed to process [{uriToCrawl.ToString()}]")
+                .CausedBy(exception));
+        }
     }
 
     private async Task<Result> CrawlUnvisitedRelativeResources(Uri uriToCrawl, string rootDownloadDirectory,
@@ -72,6 +98,8 @@ public class DefaultCrawler : IBooksToScrapeCrawler
             .ToList();
 
         _visitedUris.AddRange(unvisitedResourceUris);
+
+        await _mediator.Publish(new CrawlProgressNotification(_visitedUris.Count));
 
         return await _resourceCrawler.DownloadLocalResourcesAsync(unvisitedResourceUris, rootDownloadDirectory);
     }

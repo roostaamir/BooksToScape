@@ -1,9 +1,11 @@
 ﻿using BooksToScape.App.Common;
 using BooksToScape.App.Errors;
+using BooksToScape.App.Messaging;
 using BooksToScape.App.Services.Interfaces;
 using BooksToScape.App.Utils;
 using FluentResults;
 using HtmlAgilityPack;
+using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace BooksToScape.App.Services;
@@ -14,15 +16,21 @@ public class PerformantCrawler : IBooksToScrapeCrawler
 
     private readonly HttpClient _client;
     private readonly IResourceCrawler _resourceCrawler;
+    private readonly IMediator _mediator;
     private readonly ILogger<PerformantCrawler> _logger;
 
     private readonly List<Uri> _visitedUris;
     private readonly object _visitedUrisLock = new object();
 
-    public PerformantCrawler(HttpClient client, IResourceCrawler resourceCrawler, ILogger<PerformantCrawler> logger)
+    public PerformantCrawler(
+        HttpClient client,
+        IResourceCrawler resourceCrawler,
+        IMediator mediator,
+        ILogger<PerformantCrawler> logger)
     {
         _client = client;
         _resourceCrawler = resourceCrawler;
+        _mediator = mediator;
         _logger = logger;
 
         _visitedUris = new List<Uri>();
@@ -93,6 +101,8 @@ public class PerformantCrawler : IBooksToScrapeCrawler
 
             _visitedUris.AddRange(resourcesToCrawl);
         }
+
+        await _mediator.Publish(new CrawlProgressNotification(_visitedUris.Count));
 
         return await _resourceCrawler.DownloadLocalResourcesAsync(resourcesToCrawl, rootDownloadDirectory);
     }
