@@ -45,7 +45,7 @@ public class HttpMockHelper
 
     public void SetUpHttpMock(
         string routePart,
-        byte[] response = default!,
+        byte[]? response = null,
         HttpStatusCode responseCode = HttpStatusCode.OK,
         HttpMethod? method = null,
         IEnumerable<KeyValuePair<string, string?>>? headers = null)
@@ -64,7 +64,7 @@ public class HttpMockHelper
             {
                 var httpResponseMessage = new HttpResponseMessage(responseCode)
                 {
-                    Content = new ByteArrayContent(response)
+                    Content = new ByteArrayContent(response ?? Array.Empty<byte>())
                 };
 
                 foreach (var header in headers ?? Enumerable.Empty<KeyValuePair<string, string?>>())

@@ -59,10 +59,11 @@ public class ResourceCrawler : IResourceCrawler
 
             var cssText = await response.Content.ReadAsStringAsync();
 
-            await CrawlRelativeResourcesInsideCssTextAsync(inputUri, rootDownloadDirectory, cssText);
+            var result = await CrawlRelativeResourcesInsideCssTextAsync(inputUri, rootDownloadDirectory, cssText);
+
             await SaveCssToFileAsync(cssText, localPath);
 
-            return Result.Ok();
+            return Result.Merge(result, Result.Ok());
         }
         catch (Exception exception)
         {
@@ -88,7 +89,7 @@ public class ResourceCrawler : IResourceCrawler
         await File.WriteAllTextAsync(localPath, cssText);
     }
 
-    private async Task CrawlRelativeResourcesInsideCssTextAsync(
+    private async Task<Result> CrawlRelativeResourcesInsideCssTextAsync(
         Uri inputUri,
         string rootDownloadDirectory,
         string cssText)
@@ -97,6 +98,6 @@ public class ResourceCrawler : IResourceCrawler
             .Select(url => new Uri(inputUri, new Uri(url, UriKind.RelativeOrAbsolute)))
             .ToList();
 
-        await DownloadLocalResourcesAsync(urisInsideCss, rootDownloadDirectory);
+        return await DownloadLocalResourcesAsync(urisInsideCss, rootDownloadDirectory);
     }
 }
