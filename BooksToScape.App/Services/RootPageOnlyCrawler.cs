@@ -1,8 +1,10 @@
-﻿using System.Text.RegularExpressions;
-using BooksToScape.App.Common;
+﻿using BooksToScape.App.Common;
+using BooksToScape.App.Errors;
 using BooksToScape.App.Services.Interfaces;
 using BooksToScape.App.Utils;
+using FluentResults;
 using HtmlAgilityPack;
+using Microsoft.Extensions.Logging;
 
 namespace BooksToScape.App.Services;
 
@@ -15,39 +17,72 @@ public class RootPageOnlyCrawler : IBooksToScrapeCrawler
 {
     private readonly HttpClient _client;
     private readonly IResourceCrawler _resourceCrawler;
+    private readonly ILogger<RootPageOnlyCrawler> _logger;
 
-    public RootPageOnlyCrawler(HttpClient client, IResourceCrawler resourceCrawler)
+    public RootPageOnlyCrawler(HttpClient client, IResourceCrawler resourceCrawler, ILogger<RootPageOnlyCrawler> logger)
     {
         _client = client;
         _resourceCrawler = resourceCrawler;
+        _logger = logger;
     }
 
-    public Task CrawlAsync(string url, string rootDownloadDirectory)
+    public async Task<Result> CrawlAsync(string rootDownloadDirectory)
     {
-        if (!url.TrimEnd('/').Equals(ApplicationConstants.RootUrl.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+        try
         {
-            throw new ArgumentException("The crawler only supports crawling the root page of books.To.Scrape.com");
+            if (!Directory.Exists(rootDownloadDirectory))
+            {
+                Directory.CreateDirectory(rootDownloadDirectory);
+            }
+        }
+        catch (Exception exception)
+        {
+            return Result.Fail(new DirectoryNotValidError(rootDownloadDirectory)
+                .CausedBy(exception));
         }
 
-        if (!Directory.Exists(rootDownloadDirectory))
-        {
-            //TODO check directory is valid
-            Directory.CreateDirectory(rootDownloadDirectory);
-        }
-
-        return CrawlInternalAsync(rootDownloadDirectory);
+        return await CrawlInternalAsync(rootDownloadDirectory);
     }
 
-    private async Task CrawlInternalAsync(string rootDownloadDirectory)
+    private async Task<Result> CrawlInternalAsync(string rootDownloadDirectory)
     {
-        var responseString = await _client.GetStringAsync(ApplicationConstants.RootUrl);
+        var uriToCrawl = new Uri(ApplicationConstants.RootPage);
+
+        try
+        {
+            var htmlDocument = await GetHtmlDocument(uriToCrawl);
+
+            var resourceUris = htmlDocument.GetRelativeResourceUris()
+                .Select(uri => new Uri(uriToCrawl, uri))
+                .ToList();
+
+            var crawlResourcesResult =
+                await _resourceCrawler.DownloadLocalResourcesAsync(resourceUris, rootDownloadDirectory);
+
+            await using var writer = new StreamWriter(Path.Combine(rootDownloadDirectory, "index.html"));
+            htmlDocument.Save(writer);
+
+            return crawlResourcesResult;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                exception,
+                "Exception occured while processing page url {PageUrl}",
+                uriToCrawl.ToString());
+
+            return Result.Fail(new Error($"Failed to process [{uriToCrawl.ToString()}]")
+                .CausedBy(exception));
+        }
+    }
+
+    private async Task<HtmlDocument> GetHtmlDocument(Uri uriToCrawl)
+    {
+        var responseString = await _client.GetStringAsync(uriToCrawl);
 
         var htmlDocument = new HtmlDocument();
         htmlDocument.LoadHtml(responseString);
 
-        await _resourceCrawler.DownloadLocalResourcesAsync(htmlDocument.GetAllResourceUris(), rootDownloadDirectory);
-
-        await using var writer = new StreamWriter(Path.Combine(rootDownloadDirectory, "index.html"));
-        htmlDocument.Save(writer);
+        return htmlDocument;
     }
 }

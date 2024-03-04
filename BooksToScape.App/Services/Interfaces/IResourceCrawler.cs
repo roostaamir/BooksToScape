@@ -1,6 +1,8 @@
-﻿namespace BooksToScape.App.Services.Interfaces;
+﻿using FluentResults;
+
+namespace BooksToScape.App.Services.Interfaces;
 
 public interface IResourceCrawler
 {
-    Task DownloadLocalResourcesAsync(List<Uri> resourceUris, string rootDownloadDirectory);
+    Task<Result> DownloadLocalResourcesAsync(List<Uri> resourceUris, string rootDownloadDirectory);
 }

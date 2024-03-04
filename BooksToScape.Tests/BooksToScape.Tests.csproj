@@ -13,6 +13,7 @@
         <PackageReference Include="FluentAssertions" Version="6.12.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0"/>
         <PackageReference Include="Microsoft.Playwright.NUnit" Version="1.41.2" />
+        <PackageReference Include="NSubstitute" Version="5.1.0" />
         <PackageReference Include="NUnit" Version="3.13.3"/>
         <PackageReference Include="NUnit3TestAdapter" Version="4.2.1"/>
         <PackageReference Include="NUnit.Analyzers" Version="3.6.1"/>
@@ -21,6 +22,17 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BooksToScape.App\BooksToScape.App.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Fixtures\Resources\glyphicons-halflings-regular.eot" />
+      <Content Include="Fixtures\Resources\glyphicons-halflings-regular.eot">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+      <None Remove="Fixtures\Resources\test-resource-crawl.css" />
+      <Content Include="Fixtures\Resources\test-resource-crawl.css">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
     </ItemGroup>
 
 </Project>

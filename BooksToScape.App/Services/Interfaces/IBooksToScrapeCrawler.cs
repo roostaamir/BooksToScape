@@ -1,6 +1,8 @@
-﻿namespace BooksToScape.App.Services.Interfaces;
+﻿using FluentResults;
+
+namespace BooksToScape.App.Services.Interfaces;
 
 public interface IBooksToScrapeCrawler
 {
-    Task CrawlAsync(string url, string rootDownloadDirectory);
+    Task<Result> CrawlAsync(string rootDownloadDirectory);
 }

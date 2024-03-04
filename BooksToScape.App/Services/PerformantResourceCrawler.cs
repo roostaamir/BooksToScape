@@ -5,12 +5,12 @@ using Microsoft.Extensions.Logging;
 
 namespace BooksToScape.App.Services;
 
-public class ResourceCrawler : IResourceCrawler
+public class PerformantResourceCrawler : IResourceCrawler
 {
     private readonly HttpClient _client;
-    private readonly ILogger<ResourceCrawler> _logger;
+    private readonly ILogger<PerformantResourceCrawler> _logger;
 
-    public ResourceCrawler(HttpClient client, ILogger<ResourceCrawler> logger)
+    public PerformantResourceCrawler(HttpClient client, ILogger<PerformantResourceCrawler> logger)
     {
         _client = client;
         _logger = logger;
@@ -18,16 +18,10 @@ public class ResourceCrawler : IResourceCrawler
 
     public async Task<Result> DownloadLocalResourcesAsync(List<Uri> resourceUris, string rootDownloadDirectory)
     {
-        var results = new List<Result>();
+        var crawlTasks = resourceUris
+            .Select(uri => DownloadLocalResourcesInternalAsync(uri, rootDownloadDirectory));
 
-        foreach (var resourceUrl in resourceUris)
-        {
-            var result = await DownloadLocalResourcesInternalAsync(
-                resourceUrl,
-                rootDownloadDirectory);
-
-            results.Add(result);
-        }
+        var results = await Task.WhenAll(crawlTasks);
 
         return results.Merge();
     }

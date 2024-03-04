@@ -1,12 +1,12 @@
-using BooksToScape.App.Common;
 using BooksToScape.App.Services;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 
 namespace BooksToScape.Tests;
 
-public class CrawlingCoreTests : PageTest
+public class CrawlingCorePageTests : PageTest
 {
     private readonly string _testDirectory = Path.Combine(Environment.CurrentDirectory, "crawl-test");
 
@@ -25,10 +25,10 @@ public class CrawlingCoreTests : PageTest
     public async Task CrawlingRootPage_ShouldNotHaveAnyConsoleErrors()
     {
         var client = new HttpClient();
-        var resourceCrawler = new ResourceCrawler(client);
-        var crawler = new RootPageOnlyCrawler(client, resourceCrawler);
+        var resourceCrawler = new ResourceCrawler(client, NullLogger<ResourceCrawler>.Instance);
+        var crawler = new RootPageOnlyCrawler(client, resourceCrawler, NullLogger<RootPageOnlyCrawler>.Instance);
 
-        await crawler.CrawlAsync(ApplicationConstants.RootUrl, _testDirectory);
+        await crawler.CrawlAsync(_testDirectory);
 
         var consoleMessageList = new List<IConsoleMessage>();
         Page.Console += (_, msg) => consoleMessageList.Add(msg);
