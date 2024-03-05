@@ -3,6 +3,7 @@
 using System.Diagnostics;
 using BooksToScape.App;
 using BooksToScape.App.Common;
+using BooksToScape.App.Errors;
 using BooksToScape.App.Services;
 using BooksToScape.App.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,9 +34,14 @@ var crawler = scope.ServiceProvider.GetRequiredService<IBooksToScrapeCrawler>();
 
 var stopwatch = Stopwatch.StartNew();
 
-var result = await crawler.CrawlAsync(path);
+var result = await crawler.CrawlAsync(path!);
 
 stopwatch.Stop();
+
+if (result.HasError<DirectoryNotValidError>())
+{
+    Console.WriteLine("The directory you inputted is not valid and nothing will be crawled");
+}
 
 Console.WriteLine($"\nScraping finished in {stopwatch.ElapsedMilliseconds} milliseconds with {result.Errors.Count} errors");
 
